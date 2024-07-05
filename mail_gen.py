@@ -184,8 +184,8 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
                         </div>
                         <p>Bonjour {first_name},</p>
                         <p>
-                            Je prends ma casquette de trésorier pour t'informer que ton solde envers le club est négatif.
-                            Le détail des dettes au {current_date} est le suivant :
+                            Voici un mail pour t'informer que ton solde envers le club est négatif.
+                            Le détail de tes dettes au {current_date} est le suivant :
                         </p>
                         <p><b>{header_info}</b></p>
                         <div class="details-table-container">
@@ -198,6 +198,9 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
                         <p>
                             Si tu ne peux pas régler toute la somme en une seule fois, n'hésite pas à régler le montant d'une ou plusieurs lignes
                             plutôt qu'un montant fixe (c'est plus simple pour la compta de mon côté ;)).
+                        </p>
+                        <p>
+                            Si tu souhaites régler par carte bancaire, cela est possible. Il te suffit de répondre à ce mail en spécifiant la somme que tu veux rembourser. Un mail contenant un lien de paiement te sera envoyé par la suite.
                         </p>
                         <p>Cordialement,</p>
                         <p><b>Le trésorier</b></p>
