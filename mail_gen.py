@@ -1,6 +1,12 @@
 import pandas as pd
 import os
 import argparse
+import base64
+from datetime import datetime
+import locale
+
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')  # Set locale to French
+current_date = datetime.now().strftime('%d %B %Y')
 
 
 def extract_names(full_name: str):
@@ -86,30 +92,101 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
     if total_balance.endswith("D"):
         person_email_address = find_email_address(annuaire_df, person_name)
 
-        details = person_data[
+        details_html = person_data[
             [
                 "Id pièce",
                 "Date",
                 "Intitulé",
                 "Débit (EUR)",
                 "Crédit (EUR)",
-                "Solde (EUR)",
+                "Solde (EUR)"
             ]
-        ].to_string(index=False, header=False)
-        email_text = f"""\
-Bonjour {first_name},
+        ].to_html(index=False, header=True, border=0, classes='details-table')
 
-Je prends ma casquette de trésorier pour t'informer que ton solde envers le club est négatif. Le détail des dettes au 1er janvier est le suivant :
+        banking_info_html = banking_info.replace('\n', '<br>')
 
-{header_info}
-{details}
+        # logo_url = "https://ibb.co/R4Bn1BJ"
 
-Merci de régler ce solde rapidement via un virement sur le compte suivant:
-{banking_info}
+        email_html = f"""\
+                <html>
+                <head>
+                    <style>
+                        body {{
+                            font-family: Arial, sans-serif;
+                            background-color: #f4f4f4;
+                            padding: 20px;
+                        }}
+                        .container {{
+                            max-width: 600px;
+                            margin: auto;
+                            background-color: #ffffff;
+                            padding: 20px;
+                            border-radius: 10px;
+                            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                        }}
+                        .header {{
+                            text-align: center;
+                        }}
+                        .header img {{
+                            width: 200px;
+                            height: 130px;
+                        }}
+                        p {{
+                            font-size: 16px;
+                            color: #333333;
+                        }}
+                        .details-table {{
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 20px 0;
+                        }}
+                        .details-table th, .details-table td {{
+                            border: 1px solid #dddddd;
+                            text-align: left;
+                            padding: 8px;
+                        }}
+                        .details-table th {{
+                            background-color: #f2f2f2;
+                        }}
+                        .banking-info {{
+                            background-color: #e9f7df;
+                            border-left: 5px solid #4CAF50;
+                            padding: 10px;
+                            margin: 20px 0;
+                            font-size: 16px;
+                            color: #333333;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                        </div>
+                        <p>Bonjour {first_name},</p>
+                        <p>
+                            Je prends ma casquette de trésorier pour t'informer que ton solde envers le club est négatif.
+                            Le détail des dettes au {current_date} est le suivant :
+                        </p>
+                        <p><b>{header_info}</b></p>
+                        <div class="details-table-container">
+                            {details_html}
+                        </div>
+                        <p>Merci de régler ce solde rapidement via un virement sur le compte suivant:</p>
+                        <div class="banking-info">
+                            {banking_info_html}
+                        </div>
+                        <p>
+                            Si tu ne peux pas régler toute la somme en une seule fois, n'hésite pas à régler le montant d'une ou plusieurs lignes
+                            plutôt qu'un montant fixe (c'est plus simple pour la compta de mon côté ;)).
+                        </p>
+                        <p>Cordialement,</p>
+                        <p><b>Le trésorier</b></p>
+                    </div>
+                </body>
+                </html>
+                """
 
-Si tu ne peux pas régler toute la somme en une seule fois, n'hésite pas à régler le montant d'une ou plusieurs lignes plutôt qu'un montant fixe (c'est plus simple pour la compta de mon côté ;) )
-"""
-        return person_name, person_email_address, email_text
+        return person_name, person_email_address, email_html
     return None, None, None
 
 
@@ -145,11 +222,11 @@ if __name__ == "__main__":
             if (
                     header_info and start_idx > 1
             ):  # Ensure the first empty subtable is ignored
-                person_name, person_email_address, email_text = process_person_data(
+                person_name, email_address, email_text = process_person_data(
                     debt_df, annuaire_df, start_idx, end_idx, header_info, banking_info)
 
                 if person_name is not None and email_text is not None:
-                    emails.append((person_name, person_email_address, email_text))
+                    emails.append((person_name, email_address, email_text))
         i += 1
 
     # Create directory for emails
@@ -160,22 +237,22 @@ if __name__ == "__main__":
     # Dataframe with name, emails addresses and emails text file
     summary_df = pd.DataFrame([], columns=["Name", "Email Address", "Email File"])
 
-    # Save emails to text files
-    for person_name, person_email_address, email_text in emails:
+    # Save emails to HTML files
+    for person_name, email_address, email_html in emails:
         if person_name is None:
             raise ValueError("Person name cannot be None.")
-        if person_email_address is None:
-            person_email_address = "UNKNOWN"
-        if email_text is None:
+        if email_address is None:
+            email_address = "UNKNOWN"
+        if email_html is None:
             raise ValueError("Email text cannot be None.")
 
         filename = os.path.join(
-            emails_dir, f"email_{person_name.replace(' ', '_')}.txt"
+            emails_dir, f"email_{person_name.replace(' ', '_')}.html"
         )
         with open(filename, "w", encoding="utf-8") as file:
-            file.write(email_text)
+            file.write(email_html)
 
-        summary_df = pd.concat([summary_df, pd.DataFrame([[person_name, person_email_address, filename]],
+        summary_df = pd.concat([summary_df, pd.DataFrame([[person_name, email_address, filename]],
                                                          columns=["Name", "Email Address", "Email File"])],
                                ignore_index=True)
 
