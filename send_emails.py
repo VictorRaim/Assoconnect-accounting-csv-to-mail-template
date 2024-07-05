@@ -5,6 +5,7 @@ from pprint import pprint
 import getpass
 import argparse
 import json
+import pandas as pd
 
 
 # Create an API instance
@@ -20,7 +21,7 @@ def send_email(sender_name: str, sender_email: str, recipient_email: str, email_
     send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
         sender={"name": sender_name, "email": sender_email},
         to=[{"email": recipient_email}],
-        html_content="<p>{}</p>".format(email_text.replace("\n", "<br>")),
+        html_content=email_text,
         subject=subject,
     )
 
@@ -35,8 +36,12 @@ def send_email(sender_name: str, sender_email: str, recipient_email: str, email_
 if __name__ == "__main__":
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--sender_info", help="Path to json file with sender_name and sender_email.",
-                        default="data/sender_info.json")  # TODO: and recipient_email also (to change)
+    parser.add_argument("-s", "--sender_info",
+                        help="Path to json file with sender_name and sender_email "
+                             "(and dummy_recipient_email for testing).",
+                        default="data/sender_info.json")
+    parser.add_argument("-c", "--csv_file", default="data/emails/summary.csv",
+                        help="Path to csv file with email htlm path and recipient email.", )
 
     args = parser.parse_args()
 
@@ -49,14 +54,38 @@ if __name__ == "__main__":
     sender_name = sender_info["sender_name"]
     sender_email = sender_info["sender_email"]
 
-    # TODO: to change
-    recipient_email = sender_info["recipient_email"]
+    df_summary = pd.read_csv(args.csv_file)
 
-    email_text = "Bonjour, \n\nTest 123\n\nCordialement, \nToi"
-    subject = "Test email 3"
+    # Dummy email for testing
+    dummy_subject = "Dettes Revos Test 12!"
+
+    email_file_path = df_summary["Email File"][0]
+
+    with open(email_file_path, 'r') as file:
+        dummy_email_content = file.read()
 
     # Create an API instance
     api_instance = create_api_instance()
 
     # Send the email
-    send_email(sender_name, sender_email, recipient_email, email_text, subject, api_instance)
+    dummy_recipient_email = sender_info["dummy_recipient_email"]
+    send_email(sender_name, sender_email, dummy_recipient_email, dummy_email_content, dummy_subject, api_instance)
+
+    # DANGER ZONE: To uncomment to send everything.
+
+    # subject = "Dettes Revos"
+    # for index, row in df_summary.iterrows():
+    #     email_file_path = row["Email File"]
+    #     recipient_email = row["Email Address"]
+    #     recipient_name = row["Name"]
+    #
+    #     # Check if email address is valid
+    #     if "@" not in recipient_email:
+    #         print(f"Invalid email address: \"{recipient_email}\" for \"{recipient_name}\". Skipping.")
+    #         continue
+    #
+    #     with open(email_file_path, 'r') as file:
+    #         email_content = file.read()
+    #
+    #     # Send the email
+    #     send_email(sender_name, sender_email, recipient_email, email_content, subject, api_instance)

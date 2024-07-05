@@ -1,13 +1,12 @@
 import pandas as pd
 import os
 import argparse
-import base64
 from datetime import datetime
 import locale
+from bs4 import BeautifulSoup
 
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')  # Set locale to French
 current_date = datetime.now().strftime('%d %B %Y')
-
 
 def extract_names(full_name: str):
     """
@@ -103,9 +102,25 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
             ]
         ].to_html(index=False, header=True, border=0, classes='details-table')
 
-        banking_info_html = banking_info.replace('\n', '<br>')
-
         # logo_url = "https://ibb.co/R4Bn1BJ"
+
+        # Use BeautifulSoup to parse and modify the HTML
+        soup = BeautifulSoup(details_html, 'html.parser')
+        table = soup.find('table')
+        if table:
+            # Find the last row
+            last_row = table.find_all('tr')[-1]
+            if last_row:
+                # Find the last cell in the last row
+                last_cell = last_row.find_all('td')[-1]
+                if last_cell:
+                    # Add the custom class to the last cell
+                    last_cell['class'] = 'bottom-right-cell'
+
+        # Convert the modified HTML back to a string
+        details_html = str(soup)
+
+        banking_info_html = banking_info.replace('\n', '<br>')
 
         email_html = f"""\
                 <html>
@@ -117,7 +132,7 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
                             padding: 20px;
                         }}
                         .container {{
-                            max-width: 600px;
+                            max-width: 700px;
                             margin: auto;
                             background-color: #ffffff;
                             padding: 20px;
@@ -148,6 +163,10 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
                         .details-table th {{
                             background-color: #f2f2f2;
                         }}
+                        .bottom-right-cell {{
+                            color: red;
+                            font-weight: bold;
+                        }}
                         .banking-info {{
                             background-color: #e9f7df;
                             border-left: 5px solid #4CAF50;
@@ -161,6 +180,7 @@ def process_person_data(debt_df: pd.DataFrame, annuaire_df: pd.DataFrame, start_
                 <body>
                     <div class="container">
                         <div class="header">
+                            <a href="https://imgbb.com/"><img src="https://i.ibb.co/cXC5PCs/logo-revos.png" alt="logo-revos" border="0"></a>
                         </div>
                         <p>Bonjour {first_name},</p>
                         <p>
